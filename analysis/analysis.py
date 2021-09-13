@@ -155,12 +155,12 @@ class WeChat:
         # userName = users[0]['UserName']
         # itchat.send(result_str, toUserName=userName)
 
-        my_room = itchat.search_chatrooms(name='大数据奶茶外卖群')
+        my_room = itchat.search_chatrooms(name='发送信息的群名称')
         room_name = my_room[0]['UserName']
 
         print(result_str)
         # 发消息
-        # itchat.send(result_str, toUserName=room_name)
+        itchat.send(result_str, toUserName=room_name)
 
 
 def write_info(user_list_dict):
@@ -216,7 +216,7 @@ def compare_csv():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.dirname(__file__)))
-    weChat = WeChat("好多素教🐳")
+    weChat = WeChat("待分析群名称")
     user_list_dict = weChat.get_user_list()
     write_info(user_list_dict)
     compare_csv()
