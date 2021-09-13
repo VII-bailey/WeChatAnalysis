@@ -28,7 +28,10 @@ class WeChat:
 
     def get_room_message(self):
         self.sign_in()
-        # 获取群
+        # 获取全部群
+        # print(itchat.get_chatrooms(update=True))
+
+        # 保存到通讯录
         my_room = itchat.search_chatrooms(name=self.room_name)
         if my_room is None:
             return None
@@ -85,6 +88,9 @@ class WeChat:
             elif display_name.find('～') != -1:
                 display_name_list = display_name.split('～')
 
+            else:
+                display_name_list = []
+
             if len(display_name_list) == 2:
                 department = display_name_list[0].replace(' ', '')
                 name = display_name_list[1].replace(' ', '')
@@ -102,53 +108,59 @@ class WeChat:
         # print('department_list=', len(department_list))
         # print('name=', len(name_list))
         # return {'info_list': info_list, 'department': department_list, 'name': name_list}
+        # print({'department': department_list, 'name': name_list})
         return {'department': department_list, 'name': name_list}
 
     def send_info(self):
-        self.sign_in()
+        # self.sign_in()
         date_str = dt.datetime.now().strftime("%Y%m%d")
 
-        resign_file_dir = os.path.join('result', 'resign_user_{}.csv'.format(date_str))
+        resign_file_dir = os.path.join('result', os.path.join(date_str, 'resign_user.csv'))
         if os.path.exists(resign_file_dir):
             resign_dataframe = pd.read_csv(resign_file_dir, header=0)
         else:
             resign_dataframe = pd.DataFrame()
 
-        onboard_file_dir = os.path.join('result', 'onboard_user_{}.csv'.format(date_str))
+        onboard_file_dir = os.path.join('result', os.path.join(date_str, 'onboard_user.csv'))
         if os.path.exists(resign_file_dir):
             onboard_dataframe = pd.read_csv(onboard_file_dir, header=0)
         else:
             onboard_dataframe = pd.DataFrame()
 
         result_str = ''
-        for index in resign_dataframe.index:
-            result_str += '部门:{0},姓名:{1}\n'.format(resign_dataframe.loc[index]['department'],
-                                                   resign_dataframe.loc[index]['name'])
-        result_str += '{0}共:{1} 人,\n{2}共:{3} 人,共离职 {4} 人'.format(
-            (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y-%m-%d")
-            , resign_dataframe.loc[0]['yesterday']
-            , dt.datetime.now().strftime("%Y-%m-%d")
-            , resign_dataframe.loc[0]['today']
-            , resign_dataframe.loc[0]['delta'])
 
-        for index in onboard_dataframe.index:
-            result_str += '部门:{0},姓名:{1}\n'.format(onboard_dataframe.loc[index]['department'],
-                                                   onboard_dataframe.loc[index]['name'])
-            result_str += '{0}共:{1} 人,\n{2}共:{3} 人,\n共入职 {4} 人'.format(
+        if not resign_dataframe.empty:
+            for index in resign_dataframe.index:
+                result_str += '部门:{0},姓名:{1}\n'.format(resign_dataframe.loc[index]['department'],
+                                                       resign_dataframe.loc[index]['name'])
+            result_str += '{0}共:{1} 人,\n{2}共:{3} 人,共离职 {4} 人\n'.format(
+                (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y-%m-%d")
+                , resign_dataframe.loc[0]['yesterday']
+                , dt.datetime.now().strftime("%Y-%m-%d")
+                , resign_dataframe.loc[0]['today']
+                , resign_dataframe.loc[0]['delta'])
+
+        if not onboard_dataframe.empty:
+            for index in onboard_dataframe.index:
+                result_str += '部门:{0},姓名:{1}\n'.format(onboard_dataframe.loc[index]['department'],
+                                                       onboard_dataframe.loc[index]['name'])
+            result_str += '{0}共:{1} 人,\n{2}共:{3} 人,\n共入职 {4} 人\n'.format(
                 (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y-%m-%d")
                 , onboard_dataframe.loc[0]['yesterday']
                 , dt.datetime.now().strftime("%Y-%m-%d")
                 , onboard_dataframe.loc[0]['today']
                 , onboard_dataframe.loc[0]['delta'])
 
-        # users = itchat.search_friends(name='马传广')
+        # users = itchat.search_friends(name='用户名称')
         # userName = users[0]['UserName']
         # itchat.send(result_str, toUserName=userName)
 
-        my_room = itchat.search_chatrooms(name='目标群名称')
+        my_room = itchat.search_chatrooms(name='大数据奶茶外卖群')
         room_name = my_room[0]['UserName']
-        # print(result_str)
-        itchat.send(result_str, toUserName=room_name)
+
+        print(result_str)
+        # 发消息
+        # itchat.send(result_str, toUserName=room_name)
 
 
 def write_info(user_list_dict):
@@ -157,7 +169,7 @@ def write_info(user_list_dict):
     file_dir = os.path.join('file', file_name)
     if os.path.exists(file_dir):
         os.remove(file_dir)
-    data_frame = pd.DataFrame(user_list_dict)
+    data_frame = pd.DataFrame(user_list_dict).drop_duplicates().sort_values(by='department')
     data_frame.to_csv(file_dir, index=False, sep=',')
 
 
@@ -167,7 +179,8 @@ def compare_csv():
     file1 = pd.read_csv(file_dir1)
 
     ate_str2 = (dt.datetime.now() - dt.timedelta(days=1)).strftime("%Y%m%d")
-    file_dir2 = os.path.join('file', 'info_{}.csv'.format(ate_str2))
+    # file_dir2 = os.path.join('file', 'info_{}.csv'.format(ate_str2))
+    file_dir2 = os.path.join('file', 'info_20210906.csv')
     file2 = pd.read_csv(file_dir2)
 
     # file_list1 = file1.values.tolist()
@@ -180,7 +193,11 @@ def compare_csv():
     onboard_user = compare.df1_unq_rows
     resign_user = compare.df2_unq_rows
 
-    resign_file_dir = os.path.join('result', 'resign_user_{}.csv'.format(date_str1))
+    dir_path = os.path.join('result', date_str1)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
+    resign_file_dir = os.path.join('result', os.path.join(date_str1, 'resign_user.csv'))
     resign_user['delta'] = len(resign_user)
     resign_user['today'] = len(file1)
     resign_user['yesterday'] = len(file2)
@@ -188,7 +205,7 @@ def compare_csv():
         os.remove(resign_file_dir)
     resign_user.to_csv(resign_file_dir, index=False, sep=',')
 
-    onboard_file_dir = os.path.join('result', 'onboard_user_{}.csv'.format(date_str1))
+    onboard_file_dir = os.path.join('result', os.path.join(date_str1, 'onboard_user.csv'))
     onboard_user['delta'] = len(onboard_user)
     onboard_user['today'] = len(file1)
     onboard_user['yesterday'] = len(file2)
@@ -199,7 +216,7 @@ def compare_csv():
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.dirname(__file__)))
-    weChat = WeChat("源群名称")
+    weChat = WeChat("好多素教🐳")
     user_list_dict = weChat.get_user_list()
     write_info(user_list_dict)
     compare_csv()
